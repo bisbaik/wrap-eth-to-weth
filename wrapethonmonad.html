@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Wrap ETH to WETH - Monad Testnet</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+  <h2>OKX Wallet - Wrap ETH → WETH (Monad Testnet)</h2>
+  <button id="connectButton">🔌 Connect Wallet</button><br><br>
+
+  <div id="walletSection" style="display: none;">
+    <p><strong>Address:</strong> <span id="userAddress"></span></p>
+    <p><strong>ETH Balance:</strong> <span id="ethBalance">-</span></p>
+    <p><strong>WETH Balance:</strong> <span id="wethBalance">-</span></p>
+
+    <input type="text" id="amount" placeholder="Amount in ETH" />
+    <button id="wrapButton">🚀 Wrap ETH → WETH</button>
+    <p id="status" style="color: green;"></p>
+  </div>
+
+  <script>
+    const WETH_ADDRESS = "0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37";
+    const WETH_ABI = [
+      "function deposit() public payable",
+      "function balanceOf(address) view returns (uint256)"
+    ];
+
+    let provider, signer, userAddress, weth;
+
+    document.getElementById("connectButton").onclick = async function () {
+      if (typeof window.ethereum === 'undefined') {
+        alert("Wallet tidak ditemukan. Gunakan OKX Wallet atau MetaMask.");
+        return;
+      }
+
+      try {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        userAddress = await signer.getAddress();
+
+        document.getElementById("userAddress").textContent = userAddress;
+        document.getElementById("walletSection").style.display = "block";
+
+        weth = new ethers.Contract(WETH_ADDRESS, WETH_ABI, signer);
+        await updateBalances();
+      } catch (error) {
+        console.error("Gagal konek wallet:", error);
+        alert("Gagal konek wallet. Coba ulang.");
+      }
+    };
+
+    document.getElementById("wrapButton").onclick = async function () {
+      const amount = document.getElementById("amount").value;
+      if (!amount || isNaN(amount)) {
+        alert("Masukkan jumlah ETH yang valid.");
+        return;
+      }
+
+      try {
+        const tx = await weth.deposit({ value: ethers.utils.parseEther(amount) });
+        document.getElementById("status").textContent = "⏳ Transaksi dikirim...";
+        await tx.wait();
+        document.getElementById("status").textContent = ✅ Sukses wrap ${amount} ETH ke WETH;
+        await updateBalances();
+      } catch (err) {
+        console.error(err);
+        document.getElementById("status").textContent = "❌ Gagal wrap ETH ke WETH.";
+      }
+    };
+
+    async function updateBalances() {
+      const ethBal = await provider.getBalance(userAddress);
+      const wethBal = await weth.balanceOf(userAddress);
+
+      document.getElementById("ethBalance").textContent = ethers.utils.formatEther(ethBal) + " ETH";
+      document.getElementById("wethBalance").textContent = ethers.utils.formatEther(wethBal) + " WETH";
+    }
+  </script>
+</body>
+</html>
